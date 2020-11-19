@@ -11,12 +11,12 @@ import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
-import android.widget.Toast;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -36,7 +36,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_CODE_ACTION_ADD_FROM_CAMERA = 1;
     private static final String IMAGE_ID_DATAHOLDER = "1";
     private static final String BUNDLE_SAVED_BITMAPS = "bitmaps";
-    private static final String DIR_NAME_FOR_IMAGE = "Images";
+    public static final String DIR_NAME_FOR_IMAGE = "Images";
 
 
     private ArrayList<Bitmap> mBitmaps;
@@ -56,6 +56,11 @@ public class MainActivity extends AppCompatActivity {
         } else {
             mBitmaps = new ArrayList<>();
         }
+        try {
+            addCards();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         FloatingActionButton fabGallery = findViewById(R.id.fabGallery);
         fabGallery.setOnClickListener(new View.OnClickListener() {
@@ -74,6 +79,32 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+
+    /**
+     * Adds the provided bitmap to a list, and repopulates the main GridView with the new card.
+     */
+    private void addCard(Bitmap bitmap) {
+        mBitmaps.add(bitmap);
+
+    }
+
+    /**
+     * Adds cards with the default images stored in assets.
+     */
+    private void addCards() throws IOException {
+        // load sample images
+        File directory = new File(getApplicationContext().getFilesDir(), "Palette" + File.separator + DIR_NAME_FOR_IMAGE);
+        if (directory.listFiles() == null) {
+            findViewById(R.id.emptyLibPrompt).setVisibility(View.VISIBLE);
+        } else {
+            for (File image : directory.listFiles()) {
+                Bitmap b = BitmapFactory.decodeStream(new FileInputStream(image));
+                addCard(b);
+            }
+        }
+    }
+
+    /* add pictures funcs */
     private void getPhotoFromGallery() {
         Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
         startActivityForResult(intent, REQUEST_CODE_ACTION_ADD_FROM_STORAGE);  //Check onActivityResult on how to handle the photo selected}
@@ -114,6 +145,8 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /* END add pictures funcs */
+
 /*
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
@@ -145,14 +178,14 @@ public class MainActivity extends AppCompatActivity {
                 // Now user should be able to access gallery
                 getPhotoFromGallery();
             } else {
-                Toast.makeText(getApplicationContext(), "Please grant permission to proceed", Toast.LENGTH_LONG).show();
+                Snackbar.make(mView, "Please grant permission to proceed", Snackbar.LENGTH_LONG).show();
             }
         } else if (requestCode == REQUEST_CODE_ACTION_ADD_FROM_CAMERA) {
             if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 // Now user should be able to access the Camera
                 getPhotoFromCamera();
             } else {
-                Toast.makeText(getApplicationContext(), "Please grant permission to proceed", Toast.LENGTH_LONG).show();
+                Snackbar.make(mView, "Please grant permission to proceed", Snackbar.LENGTH_LONG).show();
             }
         }
     }
@@ -168,7 +201,6 @@ public class MainActivity extends AppCompatActivity {
                             data.getData());
                     bitmap = BitmapFactory.decodeStream(stream);
                     stream.close();
-                    o
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -178,32 +210,38 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         if (bitmap != null) {
-            addCard(bitmap);
-            mGridView.smoothScrollToPosition(mBitmaps.size() - 1);
+            // addCard(bitmap);
 
-            // save the image to internal memory
-            try {
-                File path = new File(getApplicationContext().getFilesDir(), "Palette" + File.separator + DIR_NAME_FOR_IMAGE);
-                if (!path.exists()) {
-                    if (!path.mkdirs()) {
-                        throw new IOException();
-                    }
+            // TODO generate picture with its palette async-ly and display a progress bar
+            Bitmap pictureWithPalette = null;
+
+            saveImageToInternal(pictureWithPalette);
+
+            // TODO display this picture to libraryLayout
+            addCard(pictureWithPalette);
+        }
+    }
+
+    void saveImageToInternal(Bitmap bitmap) {// save the image to internal memory
+        try {
+            File path = new File(getApplicationContext().getFilesDir(), "Palette" + File.separator + DIR_NAME_FOR_IMAGE);
+            if (!path.exists()) {
+                if (!path.mkdirs()) {
+                    throw new IOException();
                 }
-                // use current time to name the picture
-                SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmssz");
-                String imageName = sdf.format(new Date());
-
-                Log.d(TAG, "onActivityResult() returned: " + sdf);
-
-                File outFile = new File(path, imageName + ".jpeg");
-                FileOutputStream outputStream = new FileOutputStream(outFile);
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream);
-                outputStream.close();
-            } catch (IOException e) {
-                Log.e(TAG, "Saving received message failed with", e);
-                Snackbar.make(mView, "Saving received message failed", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
             }
+            // use current time to name the picture
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmssz");
+            String imageName = sdf.format(new Date());
+
+            File outFile = new File(path, imageName + ".jpeg");
+            FileOutputStream outputStream = new FileOutputStream(outFile);
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream);
+            outputStream.close();
+        } catch (IOException e) {
+            Log.e(TAG, "Saving received message failed with", e);
+            Snackbar.make(mView, "Saving received message failed", Snackbar.LENGTH_LONG)
+                    .setAction("Action", null).show();
         }
     }
 }
