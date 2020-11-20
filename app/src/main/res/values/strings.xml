@@ -16,4 +16,6 @@
     <string name="all_photos">All Photos</string>
     <string name="no_photo_in_the_library_yet">No photo in the library yet</string>
     <!--    ⌄-->
+
+    <string name="image_description">Image</string>
 </resources>

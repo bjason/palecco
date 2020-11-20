@@ -15,7 +15,7 @@
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowNoTitle">true</item>
         <!-- fab color-->
-        <item name="colorAccent">@color/darkgray</item>
+        <item name="colorAccent">@color/brown_700</item>
         <item name="colorBackgroundFloating">@color/white</item>
     </style>
 </resources>
