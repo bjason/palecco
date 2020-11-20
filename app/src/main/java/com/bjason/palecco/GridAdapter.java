@@ -16,9 +16,10 @@
 
 package com.bjason.palecco;
 
+import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 import android.transition.TransitionSet;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -30,15 +31,15 @@ import com.bumptech.glide.load.DataSource;
 import com.bumptech.glide.load.engine.GlideException;
 import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.target.Target;
+import com.google.android.material.card.MaterialCardView;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.RecyclerView;
-
-import static android.content.ContentValues.TAG;
 
 
 /**
@@ -54,6 +55,8 @@ public class GridAdapter extends RecyclerView.Adapter<GridAdapter.ImageViewHolde
         void onLoadCompleted(ImageView view, int adapterPosition);
 
         void onItemClicked(View view, int adapterPosition);
+
+        void onItemLongClicked(View view, int adapterPosition);
     }
 
     private final RequestManager requestManager;
@@ -64,7 +67,7 @@ public class GridAdapter extends RecyclerView.Adapter<GridAdapter.ImageViewHolde
      */
     public GridAdapter(Fragment fragment) {
         this.requestManager = Glide.with(fragment);
-        this.viewHolderListener = new ViewHolderListenerImpl(fragment);
+        this.viewHolderListener = new ViewHolderListenerImpl(fragment, fragment.getActivity());
     }
 
     @NonNull
@@ -93,10 +96,12 @@ public class GridAdapter extends RecyclerView.Adapter<GridAdapter.ImageViewHolde
 
         private Fragment fragment;
         private AtomicBoolean enterTransitionStarted;
+        private Context mContext;
 
-        ViewHolderListenerImpl(Fragment fragment) {
+        ViewHolderListenerImpl(Fragment fragment, Context context) {
             this.fragment = fragment;
             this.enterTransitionStarted = new AtomicBoolean();
+            mContext = context;
         }
 
         @Override
@@ -138,17 +143,43 @@ public class GridAdapter extends RecyclerView.Adapter<GridAdapter.ImageViewHolde
                     .addToBackStack(null)
                     .commit();
         }
+
+        @Override
+        public void onItemLongClicked(View view, int adapterPosition) {
+            if (GridFragment.currentSelected == adapterPosition) {
+                // deselect
+                ((MaterialCardView) view).setStrokeWidth(0);
+                ((GridFragment) fragment).setNormalFab();
+
+                GridFragment.currentSelected = -1;
+                GridFragment.currentSelectedView = null;
+            } else {
+                if (GridFragment.currentSelected != -1) {
+                    // is already selected, then deselect the previous one
+                    ((MaterialCardView) GridFragment.currentSelectedView).setStrokeWidth(0);
+                }
+                GridFragment.currentSelected = adapterPosition;
+                GridFragment.currentSelectedView = view;
+
+                MaterialCardView v = (MaterialCardView) view;
+                v.setStrokeColor(ContextCompat.getColor(fragment.getContext(), R.color.brown_500));
+                v.setStrokeWidth(15);
+
+                ((GridFragment) fragment).setSelectedFab();
+            }
+        }
     }
 
     /**
      * ViewHolder for the grid's images.
      */
     static class ImageViewHolder extends RecyclerView.ViewHolder implements
-            View.OnClickListener {
+            View.OnClickListener, View.OnLongClickListener {
 
         private final ImageView image;
         private final RequestManager requestManager;
         private final ViewHolderListener viewHolderListener;
+        private Context mContext;
 
         ImageViewHolder(View itemView, RequestManager requestManager,
                         ViewHolderListener viewHolderListener) {
@@ -156,7 +187,10 @@ public class GridAdapter extends RecyclerView.Adapter<GridAdapter.ImageViewHolde
             this.image = itemView.findViewById(R.id.card_image);
             this.requestManager = requestManager;
             this.viewHolderListener = viewHolderListener;
+            this.mContext = itemView.getContext();
+
             itemView.findViewById(R.id.card_view).setOnClickListener(this);
+            itemView.findViewById(R.id.card_view).setOnLongClickListener(this);
         }
 
         /**
@@ -173,9 +207,10 @@ public class GridAdapter extends RecyclerView.Adapter<GridAdapter.ImageViewHolde
         }
 
         void setImage(final int adapterPosition) {
+            Bitmap bitmap = GridFragment.mBitmaps.get(adapterPosition);
             // Load the image with Glide to prevent OOM error when the image drawables are very large.
             requestManager
-                    .load(GridFragment.mBitmaps.get(adapterPosition))
+                    .load(bitmap)
                     .listener(new RequestListener<Drawable>() {
                         @Override
                         public boolean onLoadFailed(@Nullable GlideException e, Object model,
@@ -192,6 +227,12 @@ public class GridAdapter extends RecyclerView.Adapter<GridAdapter.ImageViewHolde
                         }
                     })
                     .into(image);
+
+            // width is fixed to 200
+            // then new height is 200*height/width
+            float heightInDp = ImageUtil.pxFromDp(mContext, 200f * (float) bitmap.getHeight() / (float) bitmap.getWidth());
+            image.getLayoutParams().height = (int) heightInDp;
+            image.requestLayout();
         }
 
         @Override
@@ -199,9 +240,13 @@ public class GridAdapter extends RecyclerView.Adapter<GridAdapter.ImageViewHolde
             // Let the listener start the ImagePagerFragment.
             viewHolderListener.onItemClicked(view, getAdapterPosition());
             // TODO hide fab and toolbar
+
         }
 
-
+        @Override
+        public boolean onLongClick(View view) {
+            viewHolderListener.onItemLongClicked(view, getAdapterPosition());
+            return true;
+        }
     }
-
 }

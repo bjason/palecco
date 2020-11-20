@@ -17,5 +17,6 @@
         <!-- fab color-->
         <item name="colorAccent">@color/brown_700</item>
         <item name="colorBackgroundFloating">@color/white</item>
+        <item name="colorControlHighlight">@color/gray</item>
     </style>
 </resources>

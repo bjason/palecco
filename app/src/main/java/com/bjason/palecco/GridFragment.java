@@ -32,6 +32,7 @@ import android.view.View;
 import android.view.View.OnLayoutChangeListener;
 import android.view.ViewGroup;
 
+import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 
@@ -46,9 +47,11 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.SharedElementCallback;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -68,10 +71,10 @@ public class GridFragment extends Fragment {
     private View mView;
     private GridAdapter mAdapter;
 
-    public static int currentPosition; // which image clicked
-    private static final String KEY_CURRENT_POSITION = "key.currentPosition";
-
     private RecyclerView recyclerView;
+
+    public static int currentSelected;
+    public static View currentSelectedView;
 
     @Nullable
     @Override
@@ -84,6 +87,9 @@ public class GridFragment extends Fragment {
             mBitmaps = new ArrayList<>();
         }
 
+        currentSelected = -1;
+        currentSelectedView = null;
+
         recyclerView = (RecyclerView) inflater.inflate(R.layout.fragment_grid, container, false);
         mAdapter = new GridAdapter(this);
         recyclerView.setAdapter(mAdapter);
@@ -92,6 +98,18 @@ public class GridFragment extends Fragment {
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        requireActivity().getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(), new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                // redirect back press to deselect when something is selected
+                if (currentSelected != -1) {
+                    ((MaterialCardView) GridFragment.currentSelectedView).setStrokeWidth(0);
+                    currentSelected = -1;
+                    currentSelectedView = null;
+                }
+            }
+        });
 
         prepareTransitions();
         postponeEnterTransition();
@@ -250,12 +268,13 @@ public class GridFragment extends Fragment {
         }
     }
 
-    @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-
+    /* set fab to add new images states*/
+    void setNormalFab() {
         /* fab setting */
+        // TODO shrink
+
         FloatingActionButton fabGallery = getActivity().findViewById(R.id.fabGallery);
+        fabGallery.setImageDrawable(ContextCompat.getDrawable(getContext(), R.drawable.gallery));
         fabGallery.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -264,13 +283,48 @@ public class GridFragment extends Fragment {
         });
 
         FloatingActionButton fabCamera = getActivity().findViewById(R.id.fabCamera);
+        fabCamera.setImageDrawable(ContextCompat.getDrawable(getContext(), R.drawable.camera));
         fabCamera.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 openCamera();
             }
         });
+    }
 
+    /* set fab to delete and save image states*/
+    void setSelectedFab() {
+        FloatingActionButton fabGallery = getActivity().findViewById(R.id.fabGallery);
+        fabGallery.setImageDrawable(ContextCompat.getDrawable(getContext(), R.drawable.delete));
+        fabGallery.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                deleteSelectedPicture();
+            }
+        });
+
+        FloatingActionButton fabCamera = getActivity().findViewById(R.id.fabCamera);
+        fabCamera.setImageDrawable(ContextCompat.getDrawable(getContext(), R.drawable.save));
+        fabCamera.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                saveSelectedPicture();
+            }
+        });
+    }
+
+    private void saveSelectedPicture() {
+
+    }
+
+    private void deleteSelectedPicture() {
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        setNormalFab();
         scrollToPosition();
     }
 
