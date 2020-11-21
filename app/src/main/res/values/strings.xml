@@ -18,4 +18,5 @@
     <!--    ⌄-->
 
     <string name="image_description">Image</string>
+    <string name="delete_this_image">Delete this image?</string>
 </resources>

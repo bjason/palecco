@@ -148,11 +148,7 @@ public class GridAdapter extends RecyclerView.Adapter<GridAdapter.ImageViewHolde
         public void onItemLongClicked(View view, int adapterPosition) {
             if (GridFragment.currentSelected == adapterPosition) {
                 // deselect
-                ((MaterialCardView) view).setStrokeWidth(0);
                 ((GridFragment) fragment).setNormalFab();
-
-                GridFragment.currentSelected = -1;
-                GridFragment.currentSelectedView = null;
             } else {
                 if (GridFragment.currentSelected != -1) {
                     // is already selected, then deselect the previous one

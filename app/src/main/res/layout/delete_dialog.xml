@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:orientation="vertical"
+    android:background="@drawable/popup_backround">
+
+    <ImageButton
+        android:id="@+id/deleteImageButton"
+        android:layout_width="24dp"
+        android:layout_height="18dp"
+        android:layout_marginTop="48dp"
+        android:layout_marginEnd="24dp"
+        android:background="@android:color/transparent"
+        android:scaleType="fitCenter"
+        android:tint="@color/white"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/text"
+        app:srcCompat="@drawable/yes"
+        tools:ignore="ContentDescription,RtlHardcoded" />
+
+    <ImageButton
+        android:id="@+id/dimiss"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="48dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/text"
+        android:background="@android:color/transparent"
+        android:scaleType="fitCenter"
+        app:srcCompat="@drawable/no"
+        android:tint="@color/white"
+        tools:ignore="ContentDescription,RtlHardcoded" />
+
+    <TextView
+        android:id="@+id/text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="24dp"
+        android:layout_toEndOf="@+id/deleteImage"
+        android:layout_toRightOf="@+id/deleteImage"
+        android:text="@string/delete_this_image"
+        android:textSize="14dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:textColor="@color/white"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

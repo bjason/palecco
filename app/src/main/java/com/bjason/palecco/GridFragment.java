@@ -18,12 +18,14 @@ package com.bjason.palecco;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.Dialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.provider.MediaStore;
 import android.transition.TransitionInflater;
 import android.util.Log;
@@ -31,6 +33,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnLayoutChangeListener;
 import android.view.ViewGroup;
+import android.view.WindowManager;
+import android.widget.ImageButton;
 
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -80,6 +84,11 @@ public class GridFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
+
+        recyclerView = (RecyclerView) inflater.inflate(R.layout.fragment_grid, container, false);
+        mAdapter = new GridAdapter(this);
+        recyclerView.setAdapter(mAdapter);
+
         /* set images list */
         if (savedInstanceState != null) {
             mBitmaps = (ArrayList<Bitmap>) WeakDataHolder.getInstance().getData(IMAGE_ID_DATAHOLDER);
@@ -87,12 +96,6 @@ public class GridFragment extends Fragment {
             mBitmaps = new ArrayList<>();
         }
 
-        currentSelected = -1;
-        currentSelectedView = null;
-
-        recyclerView = (RecyclerView) inflater.inflate(R.layout.fragment_grid, container, false);
-        mAdapter = new GridAdapter(this);
-        recyclerView.setAdapter(mAdapter);
         try {
             addCards();
         } catch (IOException e) {
@@ -104,12 +107,13 @@ public class GridFragment extends Fragment {
             public void handleOnBackPressed() {
                 // redirect back press to deselect when something is selected
                 if (currentSelected != -1) {
-                    ((MaterialCardView) GridFragment.currentSelectedView).setStrokeWidth(0);
-                    currentSelected = -1;
-                    currentSelectedView = null;
+                    setNormalFab();
                 }
             }
         });
+
+        showFabs();
+        setNormalFab();
 
         prepareTransitions();
         postponeEnterTransition();
@@ -122,21 +126,46 @@ public class GridFragment extends Fragment {
      * Adds the provided bitmap to a list, and repopulates the main GridView with the new card.
      */
     private void addCard(Bitmap bitmap) {
+        getActivity().findViewById(R.id.emptyLibPrompt).setVisibility(View.INVISIBLE);
+
         mBitmaps.add(bitmap);
         // notify
         mAdapter.notifyDataSetChanged();
+    }
+
+    private void removeCard(int position) {
+        // delete file from internal memory
+        File directory = new File(getContext().getFilesDir(), "Palette" + File.separator + DIR_NAME_FOR_IMAGE);
+        if (directory.listFiles() == null) {
+            Log.e(TAG, "removeCard: null listFiles()");
+            Snackbar.make(getView(), "Something went wrong", Snackbar.LENGTH_LONG).show();
+        } else {
+            try {
+                directory.listFiles()[position].delete();
+            } catch (Exception e) {
+                Log.e(TAG, "removeCard: delete failed");
+                Snackbar.make(getView(), "Something went wrong", Snackbar.LENGTH_LONG).show();
+            }
+        }
+
+        mBitmaps.remove(position);
+        // notify
+        mAdapter.notifyDataSetChanged();
+
+        if (mBitmaps.size() == 0)
+            getActivity().findViewById(R.id.emptyLibPrompt).setVisibility(View.VISIBLE);
     }
 
     /**
      * Adds cards with the default images stored in assets.
      */
     private void addCards() throws IOException {
-        // load sample images
         File directory = new File(getContext().getFilesDir(), "Palette" + File.separator + DIR_NAME_FOR_IMAGE);
-        if (directory.listFiles() == null) {
-            recyclerView.findViewById(R.id.emptyLibPrompt).setVisibility(View.VISIBLE);
+        File[] listFiles = directory.listFiles();
+        if (listFiles == null || listFiles.length == 0) {
+            getActivity().findViewById(R.id.emptyLibPrompt).setVisibility(View.VISIBLE);
         } else {
-            for (File image : directory.listFiles()) {
+            for (File image : listFiles) {
                 Bitmap b = BitmapFactory.decodeStream(new FileInputStream(image));
                 addCard(b);
             }
@@ -201,14 +230,14 @@ public class GridFragment extends Fragment {
                 // Now user should be able to access gallery
                 getPhotoFromGallery();
             } else {
-                Snackbar.make(mView, "Please grant permission to proceed", Snackbar.LENGTH_LONG).show();
+                Snackbar.make(getView(), "Please grant permission to proceed", Snackbar.LENGTH_LONG).show();
             }
         } else if (requestCode == REQUEST_CODE_ACTION_ADD_FROM_CAMERA) {
             if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 // Now user should be able to access the Camera
                 getPhotoFromCamera();
             } else {
-                Snackbar.make(mView, "Please grant permission to proceed", Snackbar.LENGTH_LONG).show();
+                Snackbar.make(getView(), "Please grant permission to proceed", Snackbar.LENGTH_LONG).show();
             }
         }
     }
@@ -270,8 +299,14 @@ public class GridFragment extends Fragment {
 
     /* set fab to add new images states*/
     void setNormalFab() {
+        // deselect previous image
+        if (currentSelectedView != null)
+            ((MaterialCardView) GridFragment.currentSelectedView).setStrokeWidth(0);
+
         /* fab setting */
         // TODO shrink
+        currentSelectedView = null;
+        currentSelected = -1;
 
         FloatingActionButton fabGallery = getActivity().findViewById(R.id.fabGallery);
         fabGallery.setImageDrawable(ContextCompat.getDrawable(getContext(), R.drawable.gallery));
@@ -299,7 +334,8 @@ public class GridFragment extends Fragment {
         fabGallery.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                deleteSelectedPicture();
+                Dialog diaBox = AskOptionToDelete();
+                diaBox.show();
             }
         });
 
@@ -317,7 +353,37 @@ public class GridFragment extends Fragment {
 
     }
 
-    private void deleteSelectedPicture() {
+    private Dialog AskOptionToDelete() {
+        final Dialog dialog = new Dialog(getContext());
+        dialog.setContentView(R.layout.delete_dialog);
+
+        ImageButton deleteImageButton = (ImageButton) dialog.findViewById(R.id.deleteImageButton);
+        deleteImageButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                removeCard(currentSelected);
+                setNormalFab();
+                dialog.dismiss();
+            }
+        });
+        ImageButton dismissButton = (ImageButton) dialog.findViewById(R.id.dimiss);
+        dismissButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+                setNormalFab();
+            }
+        });
+
+        WindowManager.LayoutParams layoutParams = new WindowManager.LayoutParams();
+        layoutParams.copyFrom(dialog.getWindow().getAttributes());
+        layoutParams.width = (int) (getContext().getResources().getDisplayMetrics().widthPixels * 0.8);
+        layoutParams.height = (int) ImageUtil.pxFromDp(getContext(), 168f);
+        dialog.getWindow().setAttributes(layoutParams);
+
+        dialog.setCanceledOnTouchOutside(false);
+
+        return dialog;
     }
 
     @Override
@@ -326,6 +392,35 @@ public class GridFragment extends Fragment {
 
         setNormalFab();
         scrollToPosition();
+    }
+
+    void showFabs() {
+        final Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+
+                FloatingActionButton fabGallery = getActivity().findViewById(R.id.fabGallery);
+                fabGallery.setVisibility(View.VISIBLE);
+
+                FloatingActionButton fabCamera = getActivity().findViewById(R.id.fabCamera);
+                fabCamera.setVisibility(View.VISIBLE);
+            }
+        }, 200); // After 3 seconds
+    }
+
+    void hideFabs() {
+        FloatingActionButton fabGallery = getActivity().findViewById(R.id.fabGallery);
+        fabGallery.setVisibility(View.INVISIBLE);
+
+        FloatingActionButton fabCamera = getActivity().findViewById(R.id.fabCamera);
+        fabCamera.setVisibility(View.INVISIBLE);
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        hideFabs();
     }
 
     /**

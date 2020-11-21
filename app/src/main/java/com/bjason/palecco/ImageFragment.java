@@ -60,7 +60,7 @@ public class ImageFragment extends Fragment {
 
         // Just like we do when binding views at the grid, we set the transition name to be the string
         // value of the image res.
-        view.findViewById(R.id.image).setTransitionName(String.valueOf(GridFragment.mBitmaps.get(position)));
+        view.findViewById(R.id.deleteImage).setTransitionName(String.valueOf(GridFragment.mBitmaps.get(position)));
 
         // Load the image with Glide to prevent OOM error when the image drawables are very large.
         Glide.with(this)
@@ -86,7 +86,7 @@ public class ImageFragment extends Fragment {
                         return false;
                     }
                 })
-                .into((ImageView) view.findViewById(R.id.image));
+                .into((ImageView) view.findViewById(R.id.deleteImage));
         return view;
     }
 }
